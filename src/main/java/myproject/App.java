@@ -7,7 +7,6 @@ import com.pulumi.aws.apigateway.*;
 import com.pulumi.aws.dynamodb.Table;
 import com.pulumi.aws.dynamodb.TableArgs;
 import com.pulumi.aws.dynamodb.inputs.TableAttributeArgs;
-import com.pulumi.aws.dynamodb.inputs.TableOnDemandThroughputArgs;
 import com.pulumi.aws.iam.Role;
 import com.pulumi.aws.iam.RoleArgs;
 import com.pulumi.aws.iam.RolePolicyAttachment;
@@ -65,6 +64,12 @@ public class App {
             var rawVideoBucket = new Bucket("rawVideoBucket", BucketArgs.builder()
                     .bucket("raw-video-bucket-hemd-123")
                     .build());
+
+            Function videoTransformer = defineVideoTransformer();
+
+            var transformedVideoBucket = new Bucket("transformedVideoBucket", BucketArgs.builder()
+                    .bucket("transformed-video-bucket-hemd-123")
+                    .build());
         });
     }
 
@@ -115,10 +120,25 @@ public class App {
         return restApi;
     }
 
+
+    private static Function defineVideoTransformer() {
+        Role videoTransformerLambdaRole = defineLambdaRole("videoTransformerLambdaRole", "video_transformer_lambda_role");
+
+        var videoTransformerLambda = new Function("videoTransformerLambda", FunctionArgs.builder()
+                .name("video_transformer_lambda")
+                .role(videoTransformerLambdaRole.arn())
+                .runtime("java21")
+                .handler("org.hemz.ExampleHandler::handleRequest")
+                .timeout(29)
+                .code(new FileArchive("C:\\Users\\hemna\\Code\\lambda-test\\target\\lambda-test-1.0-SNAPSHOT.jar"))
+                .build());
+        return videoTransformerLambda;
+    }
+
     private static Function defineControllerLambda() {
         Role controllerLambdaRole = defineLambdaRole("controllerLambdaRole", "controller_lambda_role");
 
-        var testLambda = new Function("controllerLambda", FunctionArgs.builder()
+        var controllerLambda = new Function("controllerLambda", FunctionArgs.builder()
                 .name("controller_lambda")
                 .role(controllerLambdaRole.arn())
                 .runtime("java21")
@@ -126,7 +146,7 @@ public class App {
                 .timeout(29)
                 .code(new FileArchive("C:\\Users\\hemna\\Code\\lambda-test\\target\\lambda-test-1.0-SNAPSHOT.jar"))
                 .build());
-        return testLambda;
+        return controllerLambda;
     }
 
     private static Role defineLambdaRole(String pulumiResourceName, String roleName) {
