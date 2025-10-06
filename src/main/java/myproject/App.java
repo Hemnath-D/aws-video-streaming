@@ -4,6 +4,9 @@ import com.pulumi.Pulumi;
 import com.pulumi.asset.FileArchive;
 import com.pulumi.aws.AwsFunctions;
 import com.pulumi.aws.apigateway.*;
+import com.pulumi.aws.cloudfront.Distribution;
+import com.pulumi.aws.cloudfront.DistributionArgs;
+import com.pulumi.aws.cloudfront.inputs.*;
 import com.pulumi.aws.dynamodb.Table;
 import com.pulumi.aws.dynamodb.TableArgs;
 import com.pulumi.aws.dynamodb.inputs.TableAttributeArgs;
@@ -37,9 +40,9 @@ public class App {
                     .name("video")
                     .hashKey("id")
                     .rangeKey("epoch")
-                    .writeCapacity(5)
-                    .readCapacity(5)
-                    .streamEnabled(true)
+                    .writeCapacity(Integer.valueOf(5))
+                    .readCapacity(Integer.valueOf(5))
+                    .streamEnabled(Boolean.valueOf(true))
                     .streamViewType("NEW_AND_OLD_IMAGES")
                     .attributes(
                             TableAttributeArgs.builder()
@@ -69,6 +72,34 @@ public class App {
 
             var transformedVideoBucket = new Bucket("transformedVideoBucket", BucketArgs.builder()
                     .bucket("transformed-video-bucket-hemd-123")
+                    .build());
+
+
+            final var s3OriginId = "raw-video-origin";
+
+            var s3Distribution = new Distribution("rawVideoDistribution", DistributionArgs.builder()
+                    .origins(DistributionOriginArgs.builder()
+                            .domainName(rawVideoBucket.bucketRegionalDomainName())
+                            .originId(s3OriginId)
+                            .build())
+                    .enabled(true)
+                    .defaultCacheBehavior(DistributionDefaultCacheBehaviorArgs.builder()
+                            .allowedMethods("GET")
+                            .cachedMethods("GET")
+                            .targetOriginId(s3OriginId)
+                            .viewerProtocolPolicy("allow-all")
+                            .forwardedValues(DistributionDefaultCacheBehaviorForwardedValuesArgs.builder()
+                                    
+                                    .build())
+                            .build())
+                    .restrictions(DistributionRestrictionsArgs.builder()
+                            .geoRestriction(DistributionRestrictionsGeoRestrictionArgs.builder()
+                                    .restrictionType("none")
+                                    .build())
+                            .build())
+                    .viewerCertificate(DistributionViewerCertificateArgs.builder()
+                            .cloudfrontDefaultCertificate(true)
+                            .build())
                     .build());
         });
     }
@@ -102,7 +133,7 @@ public class App {
                 .integrationHttpMethod("POST")
                 .type("AWS_PROXY")
                 .uri(uri)
-                .timeoutMilliseconds(29000)
+                .timeoutMilliseconds(Integer.valueOf(29000))
                 .build(),
                 CustomResourceOptions.builder().dependsOn(controllerLambda).build());
 
@@ -129,8 +160,8 @@ public class App {
                 .role(videoTransformerLambdaRole.arn())
                 .runtime("java21")
                 .handler("org.hemz.ExampleHandler::handleRequest")
-                .timeout(29)
-                .code(new FileArchive("C:\\Users\\hemna\\Code\\lambda-test\\target\\lambda-test-1.0-SNAPSHOT.jar"))
+                .timeout(Integer.valueOf(29))
+                .code(new FileArchive("/home/hemnath/Code/lambda-examples/target/lambda-test-1.0-SNAPSHOT.jar"))
                 .build());
         return videoTransformerLambda;
     }
@@ -143,8 +174,8 @@ public class App {
                 .role(controllerLambdaRole.arn())
                 .runtime("java21")
                 .handler("org.hemz.ExampleHandler::handleRequest")
-                .timeout(29)
-                .code(new FileArchive("C:\\Users\\hemna\\Code\\lambda-test\\target\\lambda-test-1.0-SNAPSHOT.jar"))
+                .timeout(Integer.valueOf(29))
+                .code(new FileArchive("/home/hemnath/Code/lambda-examples/target/lambda-test-1.0-SNAPSHOT.jar"))
                 .build());
         return controllerLambda;
     }
@@ -194,8 +225,8 @@ public class App {
                 .role(controllerLambdaRole.arn())
                 .runtime("java21")
                 .handler("org.hemz.OpensearchTransformer::handleRequest")
-                .timeout(29)
-                .code(new FileArchive("C:\\Users\\hemna\\Code\\lambda-test\\target\\lambda-test-1.0-SNAPSHOT.jar"))
+                .timeout(Integer.valueOf(29))
+                .code(new FileArchive("/home/hemnath/Code/lambda-examples/target/lambda-test-1.0-SNAPSHOT.jar"))
                 .build());
         return opensearchTransformer;
     }
